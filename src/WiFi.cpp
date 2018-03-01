@@ -1166,4 +1166,20 @@ uint32_t WiFiClass::getTime()
 #endif
 }
 
+void WiFiClass::enableContestedSpi(bool flag)
+{
+	if (flag)
+		gi8Winc1501SpiFLags |= WINC1501_SPI_CONTESTED;
+	else 
+		gi8Winc1501SpiFLags &= ~WINC1501_SPI_CONTESTED;
+}
+	
+void WiFiClass::enableSpiInterrupt(bool flag)
+{
+	if (flag)
+		gi8Winc1501SpiFLags |= WINC1501_SPI_INTSAFE;
+	else 
+		gi8Winc1501SpiFLags &= ~WINC1501_SPI_INTSAFE;
+}
+
 WiFiClass WiFi;

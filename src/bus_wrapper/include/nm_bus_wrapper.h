@@ -124,7 +124,6 @@ typedef struct
 /*!< Bus capabilities. This structure must be declared at platform specific bus wrapper */
 extern tstrNmBusCapabilities egstrNmBusCapabilities;
 
-
 #ifdef __cplusplus
      extern "C" {
  #endif
@@ -145,7 +144,7 @@ sint8 nm_bus_init(void *);
 *	@return	ZERO in case of success and M2M_ERR_BUS_FAIL in case of failure
 *	@note	For SPI only, it's important to be able to send/receive at the same time
 */
-sint8 nm_bus_ioctl(uint8 u8Cmd, void* pvParameter);
+sint8 nm_bus_ioctl(uint8 u8Cmd, void* pvParameter) __attribute__ ((hot));
 
 /**
 *	@fn		nm_bus_deinit

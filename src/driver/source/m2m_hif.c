@@ -39,6 +39,9 @@
  *
  */
 
+// timing
+#include "../../utility/dbtimer.h"
+
 #include "common/include/nm_common.h"
 #include "driver/source/nmbus.h"
 #include "bsp/include/nm_bsp.h"
@@ -316,6 +319,9 @@ sint8 hif_send(uint8 u8Gid,uint8 u8Opcode,uint8 *pu8CtrlBuf,uint16 u16CtrlBufSiz
 	strHif.u8Opcode		= u8Opcode&(~NBIT7);
 	strHif.u8Gid		= u8Gid;
 	strHif.u16Length	= M2M_HIF_HDR_OFFSET;
+
+	dbtimer_tic(1); // latency debugging 
+
 	if(pu8DataBuf != NULL)
 	{
 		strHif.u16Length += u16DataOffset + u16DataSize;
@@ -354,6 +360,7 @@ sint8 hif_send(uint8 u8Gid,uint8 u8Opcode,uint8 *pu8CtrlBuf,uint16 u16CtrlBufSiz
 #endif
 		dma_addr = 0;
 		
+		dbtimer_tic(2); // latency debugging 
 		for(cnt = 0; cnt < 1000; cnt ++)
 		{
 			ret = nm_read_reg_with_ret(WIFI_HOST_RCV_CTRL_2,(uint32 *)&reg);
@@ -380,6 +387,7 @@ sint8 hif_send(uint8 u8Gid,uint8 u8Opcode,uint8 *pu8CtrlBuf,uint16 u16CtrlBufSiz
 				break;
 			}
 		}
+		dbtimer_toc(2); // latency debugging 
 
 		if (dma_addr != 0)
 		{
@@ -397,16 +405,19 @@ sint8 hif_send(uint8 u8Gid,uint8 u8Opcode,uint8 *pu8CtrlBuf,uint16 u16CtrlBufSiz
 			}
 			if(pu8DataBuf != NULL)
 			{
+				//dbtimer_tic(3); // latency debugging 
 				u32CurrAddr += (u16DataOffset - u16CtrlBufSize);
 				ret = nm_write_block(u32CurrAddr, pu8DataBuf, u16DataSize);
 				if(M2M_SUCCESS != ret) goto ERR1;
 				u32CurrAddr += u16DataSize;
+				//dbtimer_toc(3); // latency debugging 
 			}
 
 			reg = dma_addr << 2;
 			reg |= NBIT1;
 			ret = nm_write_reg(WIFI_HOST_RCV_CTRL_3, reg);
 			if(M2M_SUCCESS != ret) goto ERR1;
+			
 		}
 		else
 		{
@@ -424,12 +435,14 @@ sint8 hif_send(uint8 u8Gid,uint8 u8Opcode,uint8 *pu8CtrlBuf,uint16 u16CtrlBufSiz
 	}
 	/*actual sleep ret = M2M_SUCCESS*/
  	ret = hif_chip_sleep();
+	dbtimer_toc(1); // latency debugging 
 	return ret;
 ERR1:
 	/*reset the count but no actual sleep as it already bus error*/
 	hif_chip_sleep_sc();
 ERR2:
 	/*logical error*/
+	dbtimer_toc(1); // latency debugging 
 	return ret;
 }
 

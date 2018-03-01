@@ -50,6 +50,7 @@ int8_t gi8Winc1501CsPin = WINC1501_SPI_CS_PIN;
 int8_t gi8Winc1501ResetPin = WINC1501_RESET_PIN;
 int8_t gi8Winc1501IntnPin = WINC1501_INTN_PIN;
 int8_t gi8Winc1501ChipEnPin = WINC1501_CHIP_EN_PIN;
+int8_t gi8Winc1501SpiFLags = WINC1501_SPI_DEFAULTFLAGS;
 
 static tpfNmBspIsr gpfIsr;
 

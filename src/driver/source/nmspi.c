@@ -40,6 +40,11 @@
  */
 #include "common/include/nm_common.h"
 
+// timing
+#include "../../utility/dbtimer.h"
+
+// #define CONF_WINC_USE_SPI 1 
+
 #ifdef CONF_WINC_USE_SPI
 
 #define USE_OLD_SPI_SW
@@ -96,7 +101,7 @@
 
 static uint8 	gu8Crc_off	=   0;
 
-static sint8 nmi_spi_read(uint8* b, uint16 sz)
+inline static sint8 nmi_spi_read(uint8* b, uint16 sz)
 {
 	tstrNmSpiRw spi;
 	spi.pu8InBuf = NULL;
@@ -105,16 +110,19 @@ static sint8 nmi_spi_read(uint8* b, uint16 sz)
 	return nm_bus_ioctl(NM_BUS_IOCTL_RW, &spi);
 }
 
-static sint8 nmi_spi_write(uint8* b, uint16 sz)
+inline static sint8 nmi_spi_write(uint8* b, uint16 sz)
 {
+	dbtimer_tic(3); // latency debugging
 	tstrNmSpiRw spi;
 	spi.pu8InBuf = b;
 	spi.pu8OutBuf = NULL;
 	spi.u16Sz = sz;
-	return nm_bus_ioctl(NM_BUS_IOCTL_RW, &spi);
+	sint8 ret =  nm_bus_ioctl(NM_BUS_IOCTL_RW, &spi);
+	dbtimer_toc(3); // latency debugging
+	return ret;
 }
 #ifndef USE_OLD_SPI_SW
-static sint8 nmi_spi_rw(uint8 *bin,uint8* bout,uint16 sz)
+inline static sint8 nmi_spi_rw(uint8 *bin,uint8* bout,uint16 sz)
 {
 	tstrNmSpiRw spi;
 	spi.pu8InBuf = bin;
@@ -169,7 +177,7 @@ static const uint8 crc7_syndrome_table[256] = {
 };
 
 
-static uint8 crc7_byte(uint8 crc, uint8 data)
+inline static uint8 crc7_byte(uint8 crc, uint8 data)
 {
 #if (defined ARDUINO_ARCH_AVR)
 	return pgm_read_byte_near(crc7_syndrome_table + ((crc << 1) ^ data));
@@ -178,7 +186,7 @@ static uint8 crc7_byte(uint8 crc, uint8 data)
 #endif
 }
 
-static uint8 crc7(uint8 crc, const uint8 *buffer, uint32 len)
+inline static uint8 crc7(uint8 crc, const uint8 *buffer, uint32 len)
 {
 	while (len--)
 		crc = crc7_byte(crc, *buffer++);
@@ -210,7 +218,7 @@ static uint8 crc7(uint8 crc, const uint8 *buffer, uint32 len)
 #define DATA_PKT_SZ_8K			(8 * 1024)
 #define DATA_PKT_SZ				DATA_PKT_SZ_8K
 
-static sint8 spi_cmd(uint8 cmd, uint32 adr, uint32 u32data, uint32 sz,uint8 clockless)
+inline static sint8 spi_cmd(uint8 cmd, uint32 adr, uint32 u32data, uint32 sz,uint8 clockless)
 {
 	uint8 bc[9];
 	uint8 len = 5;
@@ -308,7 +316,7 @@ static sint8 spi_cmd(uint8 cmd, uint32 adr, uint32 u32data, uint32 sz,uint8 cloc
 	return result;
 }
 
-static sint8 spi_data_rsp(uint8 cmd)
+inline static sint8 spi_data_rsp(uint8 cmd)
 {
 #ifdef ARDUINO
 	(void)cmd; // Silence "unused" warning
@@ -339,7 +347,7 @@ _fail_:
 	return result;
 }
 
-static sint8 spi_cmd_rsp(uint8 cmd)
+inline static sint8 spi_cmd_rsp(uint8 cmd)
 {
 	uint8 rsp;
 	sint8 result = N_OK;
@@ -752,7 +760,7 @@ _error_:
 	return result;
 }
 #endif
-static sint8 spi_data_read(uint8 *b, uint16 sz,uint8 clockless)
+inline static sint8 spi_data_read(uint8 *b, uint16 sz,uint8 clockless)
 {
 	sint16 retry, ix, nbytes;
 	sint8 result = N_OK;
@@ -821,7 +829,7 @@ static sint8 spi_data_read(uint8 *b, uint16 sz,uint8 clockless)
 	return result;
 }
 
-static sint8 spi_data_write(uint8 *b, uint16 sz)
+inline static sint8 spi_data_write(uint8 *b, uint16 sz)
 {
 	sint16 ix;
 	uint16 nbytes;
@@ -874,6 +882,7 @@ static sint8 spi_data_write(uint8 *b, uint16 sz)
 			Write Crc
 		**/
 		if (!gu8Crc_off) {
+			// this will send a CRC that has never been computed (?)
 			if (M2M_SUCCESS != nmi_spi_write(crc, 2)) {
 				M2M_ERR("[nmi spi]: Failed data block crc write, bus error...\n");
 				result = N_FAIL;
@@ -884,7 +893,6 @@ static sint8 spi_data_write(uint8 *b, uint16 sz)
 		ix += nbytes;
 		sz -= nbytes;
 	} while (sz);
-
 
 	return result;
 }
@@ -901,7 +909,7 @@ static sint8 spi_data_write(uint8 *b, uint16 sz)
 
 ********************************************/
 
-static sint8 spi_write_reg(uint32 addr, uint32 u32data)
+inline static sint8 spi_write_reg(uint32 addr, uint32 u32data)
 {
 	uint8 retry = SPI_RETRY_COUNT;
 	sint8 result = N_OK;
@@ -960,12 +968,11 @@ _FAIL_:
 	return result;
 }
 
-static sint8 nm_spi_write(uint32 addr, uint8 *buf, uint16 size)
+inline static sint8 nm_spi_write(uint32 addr, uint8 *buf, uint16 size)
 {
 	sint8 result;
 	uint8 retry = SPI_RETRY_COUNT;
 	uint8 cmd = CMD_DMA_EXT_WRITE;
-
 
 _RETRY_:
 	/**
@@ -1024,11 +1031,10 @@ _FAIL_:
 		if(retry) goto _RETRY_;
 	}
 
-
 	return result;
 }
 
-static sint8 spi_read_reg(uint32 addr, uint32 *u32data)
+static inline sint8 spi_read_reg(uint32 addr, uint32 *u32data)
 {
 	uint8 retry = SPI_RETRY_COUNT;
 	sint8 result = N_OK;
@@ -1101,7 +1107,7 @@ _FAIL_:
 	return result;
 }
 
-static sint8 nm_spi_read(uint32 addr, uint8 *buf, uint16 size)
+static inline sint8 nm_spi_read(uint32 addr, uint8 *buf, uint16 size)
 {
 	uint8 cmd = CMD_DMA_EXT_READ;
 	sint8 result;

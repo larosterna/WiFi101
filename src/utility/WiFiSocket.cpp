@@ -25,6 +25,7 @@ extern "C" {
 }
 
 #include "WiFiSocket.h"
+#include "dbtimer.h"
 
 #ifdef LIMITED_RAM_DEVICE
 #define SOCKET_BUFFER_SIZE 64
@@ -272,6 +273,7 @@ uint16_t WiFiSocketClass::remotePort(SOCKET sock)
 
 size_t WiFiSocketClass::write(SOCKET sock, const uint8_t *buf, size_t size)
 {
+	dbtimer_tic(0);
 	m2m_wifi_handle_events(NULL);
 
 	if (_info[sock].state != SOCKET_STATE_CONNECTED) {
@@ -304,6 +306,7 @@ size_t WiFiSocketClass::write(SOCKET sock, const uint8_t *buf, size_t size)
 	m2m_periph_gpio_set_val(M2M_PERIPH_GPIO5, 1);
 #endif
 
+	dbtimer_toc(0);
 	return size;
 }
 

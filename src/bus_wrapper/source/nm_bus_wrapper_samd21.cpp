@@ -63,47 +63,54 @@ extern "C" {
 
 }
 
-#define NM_BUS_MAX_TRX_SZ	256
+// timing
+#include "../../utility/dbtimer.h"
+
+#define NM_BUS_MAX_TRX_SZ	512
 
 tstrNmBusCapabilities egstrNmBusCapabilities =
 {
 	NM_BUS_MAX_TRX_SZ
 };
 
-static const SPISettings wifi_SPISettings(12000000L, MSBFIRST, SPI_MODE0);
+#define wifi_SPISettings SPISettings(12000000L, MSBFIRST, SPI_MODE0)
 
-static sint8 spi_rw(uint8* pu8Mosi, uint8* pu8Miso, uint16 u16Sz)
+// separate declaration for function attributes
+static inline sint8 spi_rw(uint8* pu8Mosi, uint8* pu8Miso, uint16 u16Sz) __attribute__ ((hot));
+
+static inline sint8 spi_rw(uint8* pu8Mosi, uint8* pu8Miso, uint16 u16Sz)
 {
-	uint8 u8Dummy = 0;
-	uint8 u8SkipMosi = 0, u8SkipMiso = 0;
-
-	if (!pu8Mosi) {
-		pu8Mosi = &u8Dummy;
-		u8SkipMosi = 1;
-	}
-	else if(!pu8Miso) {
-		pu8Miso = &u8Dummy;
-		u8SkipMiso = 1;
-	}
-	else {
-		return M2M_ERR_BUS_FAIL;
-	}
-
-	WINC1501_SPI.beginTransaction(wifi_SPISettings);
+	uint8 u8Dummy[4] = {0,0,0,0};
+	static uint8 initialized = 0;
+	
+	if (initialized == 0 or gi8Winc1501SpiFLags != 0)
+		WINC1501_SPI.beginTransaction(wifi_SPISettings);
 	digitalWrite(gi8Winc1501CsPin, LOW);
 
-	while (u16Sz) {
-		*pu8Miso = WINC1501_SPI.transfer(*pu8Mosi);
-			
-		u16Sz--;
-		if (!u8SkipMiso)
-			pu8Miso++;
-		if (!u8SkipMosi)
-			pu8Mosi++;
+	// common small message sizes handled w/o call overhead
+	uint8 *ptx = (pu8Mosi != 0) ? pu8Mosi : u8Dummy;
+	uint8 *prx = (pu8Miso != 0) ? pu8Miso : u8Dummy;
+	switch (u16Sz) {
+		case 4:
+			*prx++ = WINC1501_SPI.transfer(*ptx++);
+		case 3:
+			*prx++ = WINC1501_SPI.transfer(*ptx++);
+		case 2:
+			*prx++ = WINC1501_SPI.transfer(*ptx++);
+		case 1:
+			*prx = WINC1501_SPI.transfer(*ptx);
+		case 0:
+			break;
+		default:
+			WINC1501_SPI.transceive(pu8Mosi, pu8Miso, u16Sz);
 	}
 
 	digitalWrite(gi8Winc1501CsPin, HIGH);
-	WINC1501_SPI.endTransaction();
+	
+	if (initialized == 0 or gi8Winc1501SpiFLags != 0) {
+		WINC1501_SPI.endTransaction();
+		initialized = 1;
+	}
 
 	return M2M_SUCCESS;
 }
@@ -161,7 +168,7 @@ sint8 nm_bus_ioctl(uint8 u8Cmd, void* pvParameter)
 		break;
 		default:
 			s8Ret = -1;
-			M2M_ERR("invalide ioclt cmd\n");
+			M2M_ERR("invalide ioctl cmd\n");
 			break;
 	}
 

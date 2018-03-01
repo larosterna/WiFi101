@@ -35,6 +35,8 @@ extern "C" {
 #include "WiFiClient.h"
 #include "WiFiSSLClient.h"
 #include "WiFiServer.h"
+#include "utility/WiFiSocket.h"
+#include "utility/dbtimer.h"
 
 typedef enum {
 	WL_NO_SHIELD = 255,
@@ -122,6 +124,9 @@ public:
 	void config(IPAddress local_ip, IPAddress dns_server);
 	void config(IPAddress local_ip, IPAddress dns_server, IPAddress gateway);
 	void config(IPAddress local_ip, IPAddress dns_server, IPAddress gateway, IPAddress subnet);
+
+	static void enableContestedSpi(bool flag);
+	static void enableSpiInterrupt(bool flag);
 
 	void hostname(const char* name);
 

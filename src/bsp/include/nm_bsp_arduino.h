@@ -66,9 +66,14 @@
   #define WINC1501_CHIP_EN_PIN -1
 #endif
 
+#define WINC1501_SPI_CONTESTED      0x1
+#define WINC1501_SPI_INTSAFE        0x2
+#define WINC1501_SPI_DEFAULTFLAGS   WINC1501_SPI_CONTESTED | WINC1501_SPI_INTSAFE
+
 extern int8_t gi8Winc1501CsPin;
 extern int8_t gi8Winc1501ResetPin;
 extern int8_t gi8Winc1501IntnPin;
 extern int8_t gi8Winc1501ChipEnPin;
+extern int8_t gi8Winc1501SpiFLags;
 
 #endif /* _NM_BSP_ARDUINO_H_ */
